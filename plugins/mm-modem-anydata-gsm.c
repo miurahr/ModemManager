@@ -12,6 +12,9 @@
  *
  * Copyright (C) 2008 - 2009 Novell, Inc.
  * Copyright (C) 2009 - 2010 Red Hat, Inc.
+ * Copyright (C) 2010 Hiroshi Miura <miurahr@linux.com>
+ *
+ * many come from huawei plugin 
  */
 
 #include <stdlib.h>
@@ -34,7 +37,6 @@ static void modem_gsm_network_init (MMModemGsmNetwork *gsm_network_class);
 G_DEFINE_TYPE_EXTENDED (MMModemAnydataGsm, mm_modem_anydata_gsm, MM_TYPE_GENERIC_GSM, 0,
                         G_IMPLEMENT_INTERFACE (MM_TYPE_MODEM, modem_init)
                         G_IMPLEMENT_INTERFACE (MM_TYPE_MODEM_GSM_NETWORK, modem_gsm_network_init))
-
 
 MMModem *
 mm_modem_anydata_gsm_new (const char *device,
@@ -109,6 +111,51 @@ out:
 }
 
 /*****************************************************************************/
+static void
+anydata_reg_info_invoke (MMCallbackInfo *info)
+{
+    MMModemGsmNetworkRegInfoFn callback = (MMModemGsmNetworkRegInfoFn) info->callback;
+
+    callback (MM_MODEM_GSM_NETWORK (info->modem),
+              MM_MODEM_GSM_NETWORK_REG_STATUS_HOME,
+              NULL, 
+              NULL,
+              info->error,
+              info->user_data);
+}
+
+static void
+get_registration_info (MMModemGsmNetwork *self,
+                       MMModemGsmNetworkRegInfoFn callback,
+                       gpointer user_data)
+{
+    MMCallbackInfo *info;
+
+    info = mm_callback_info_new_full (MM_MODEM (self),
+                                      anydata_reg_info_invoke,
+                                      G_CALLBACK (callback),
+                                      user_data);
+    /* Registration info updates are handled internally either by unsolicited
+     * updates or by polling.  Thus just return the cached registration state.
+     */
+    mm_callback_info_schedule (info);
+}
+
+static void
+do_register (MMModemGsmNetwork *modem,
+             const char *network_id,
+             MMModemFn callback,
+             gpointer user_data)
+{
+    MMCallbackInfo *info;
+
+    /* Clear any previous registration */
+    mm_generic_gsm_pending_registration_stop (MM_GENERIC_GSM (modem));
+
+    info = mm_callback_info_new (MM_MODEM (modem), callback, user_data);
+    mm_callback_info_schedule (info);
+}
+/*****************************************************************************/
 
 static void
 modem_init (MMModem *modem_class)
@@ -119,6 +166,8 @@ modem_init (MMModem *modem_class)
 static void
 modem_gsm_network_init (MMModemGsmNetwork *class)
 {
+    class->do_register = do_register;
+    class->get_registration_info = get_registration_info;
 }
 
 static void
