@@ -244,7 +244,9 @@ libmm_plugin_anydata_la_SOURCES = \
 	mm-plugin-anydata.c \
 	mm-plugin-anydata.h \
 	mm-modem-anydata-cdma.c \
-	mm-modem-anydata-cdma.h
+	mm-modem-anydata-cdma.h \
+	mm-modem-anydata-gsm.c \
+	mm-modem-anydata-gsm.h
 
 libmm_plugin_anydata_la_CPPFLAGS = \
 	$(MM_CFLAGS) \

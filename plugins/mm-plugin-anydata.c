@@ -18,6 +18,7 @@
 #include <gmodule.h>
 #include "mm-plugin-anydata.h"
 #include "mm-modem-anydata-cdma.h"
+#include "mm-modem-anydata-gsm.h"
 
 G_DEFINE_TYPE (MMPluginAnydata, mm_plugin_anydata, MM_TYPE_PLUGIN_BASE)
 
@@ -42,11 +43,12 @@ mm_plugin_create (void)
 static guint32
 get_level_for_capabilities (guint32 capabilities)
 {
-    /* Only CDMA and QCDM for now */
     if (capabilities & CAP_CDMA)
         return 10;
     if (capabilities & MM_PLUGIN_BASE_PORT_CAP_QCDM)
         return 10;
+    if (capabilities & MM_PLUGIN_BASE_PORT_CAP_GSM) 
+	return 10;
 
     return 0;
 }
@@ -124,13 +126,14 @@ grab_port (MMPluginBase *base,
     name = g_udev_device_get_name (port);
 
     caps = mm_plugin_base_supports_task_get_probed_capabilities (task);
-    if (caps & MM_PLUGIN_BASE_PORT_CAP_GSM) {
-        g_set_error (error, 0, 0, "Only CDMA modems are currently supported by this plugin.");
-        return NULL;
-    }
 
     sysfs_path = mm_plugin_base_supports_task_get_physdev_path (task);
     if (!existing) {
+        if (caps & MM_PLUGIN_BASE_PORT_CAP_GSM) {
+	    modem = mm_modem_anydata_gsm_new (sysfs_path,
+		       mm_plugin_base_supports_task_get_driver(task),
+		       mm_plugin_get_name (MM_PLUGIN (base)));
+        }
         if (caps & CAP_CDMA) {
             modem = mm_modem_anydata_cdma_new (sysfs_path,
                                                mm_plugin_base_supports_task_get_driver (task),
